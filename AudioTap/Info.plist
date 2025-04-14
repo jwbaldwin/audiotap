@@ -24,6 +24,8 @@
 	<string>This app needs to access your microphone to capture system audio for recording calls.</string>
 	<key>NSAudioCaptureUsageDescription</key>
 	<string>This app needs to capture system audio to record your calls for analysis.</string>
+	<key>NSSystemExtensionUsageDescription</key>
+	<string>This app needs to use system extensions to capture audio from other applications.</string>
 	<key>LSApplicationCategoryType</key>
 	<string>public.app-category.utilities</string>
 	<key>LSUIElement</key>

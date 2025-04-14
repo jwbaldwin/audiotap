@@ -4,14 +4,14 @@ A macOS application for capturing system audio output to a file.
 
 ## Features
 
-- Records system audio output to a WAV file
+- Records system audio output to a WAV file using modern Core Audio APIs
+- Captures audio from all applications on your system
 - Simple menu bar interface
-- Uses Core Audio for high-quality audio capture
 - Saves timestamped recordings to the Documents folder
 
 ## Requirements
 
-- macOS 14.2+ (for optimal performance)
+- macOS 14.2+ (required for CATapDescription and AudioHardwareCreateProcessTap)
 - Xcode 15+
 - Swift 5.9+
 
@@ -20,7 +20,12 @@ A macOS application for capturing system audio output to a file.
 1. Create a new Swift project in Xcode
 2. Add the AudioTap.swift and AudioManager.swift files to your project
 3. Configure the Info.plist entries (already included in this repo)
-4. Build and run the application
+4. Set the deployment target to macOS 14.2 or later
+5. Configure the necessary entitlements:
+   - com.apple.security.device.audio-input
+   - com.apple.security.device.microphone
+   - com.apple.security.audio-capture
+6. Build and run the application
 
 ## Usage
 
@@ -31,8 +36,13 @@ A macOS application for capturing system audio output to a file.
 
 ## Technical Notes
 
-This application uses AVAudioEngine for audio capture. While the ideal approach would be to use CATapDescription and AudioHardwareServiceCreateProcessTap for system audio capture, this prototype falls back to using AVAudioEngine's mixer node tap.
+This application uses the new CATapDescription and AudioHardwareCreateProcessTap APIs introduced in macOS 14.2 to capture system audio from all applications. These are public APIs specifically designed for this purpose.
 
-The current implementation installs a tap on the main mixer node of an AVAudioEngine instance. This captures any audio being played back by this application, not from other applications.
+The implementation:
+1. Obtains the system's default output device
+2. Creates a CATapDescription targeting that device
+3. Uses AudioHardwareCreateProcessTap to establish a tap on the audio stream
+4. Collects audio buffers and writes them to a WAV file
+5. Properly cleans up the tap when recording stops
 
-For capturing audio from other applications, a full implementation would need to use AudioHardwareServiceCreateProcessTap or an aggregate audio device approach, which would require additional code complexity.
+This method allows capturing audio from any application on the system without needing to create aggregate audio devices or use third-party solutions.
