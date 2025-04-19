@@ -2,36 +2,35 @@ import SwiftUI
 
 @main
 struct AudioTapApp: App {
-    @StateObject private var audioManager = AudioManager()
+    @StateObject private var audioService = AudioTapService()
     
     var body: some Scene {
-        MenuBarExtra("AudioTap", systemImage: audioManager.isRecording ? "record.circle.fill" : "record.circle") {
-            VStack(spacing: 12) {
-                Text("AudioTap")
-                    .font(.headline)
-                
-                Divider()
-                
-                if audioManager.isRecording {
-                    Button("Stop Recording") {
-                        audioManager.stopRecording()
-                    }
-                    .foregroundColor(.red)
-                } else {
-                    Button("Start Recording") {
-                        audioManager.startRecording()
-                    }
-                    .foregroundColor(.blue)
+        MenuBarExtra("AudioTap", systemImage: audioService.isRecording ? "record.circle.fill" : "record.circle") {
+            AudioTapView(audioService: audioService)
+        }
+        .menuBarExtraStyle(.window)
+        .commands {
+            CommandGroup(after: .appSettings) {
+                Button("Setup Audio System") {
+                    audioService.setupAudioSystem()
                 }
+                .disabled(audioService.isSetup)
                 
-                Divider()
-                
-                Button("Quit") {
-                    NSApplication.shared.terminate(nil)
+                Button("Teardown Audio System") {
+                    audioService.tearDownAudioSystem()
                 }
+                .disabled(!audioService.isSetup)
             }
-            .padding()
-            .frame(width: 200)
+        }
+        .onChange(of: audioService.errorMessage) { _, newValue in
+            if let errorMessage = newValue {
+                #if DEBUG
+                print("Error: \(errorMessage)")
+                #endif
+            }
+        }
+        .onAppear {
+            audioService.setupAudioSystem()
         }
     }
 }

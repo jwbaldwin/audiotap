@@ -8,7 +8,9 @@ class AudioManager: ObservableObject {
     
     private var audioEngine: AVAudioEngine?
     private var audioFile: AVAudioFile?
-    private var processTap: CATapRef?
+    private var processTap: AudioObjectID?
+    private var aggregateDevice: AudioObjectID?
+    private var deviceIOProcID: AudioDeviceIOProcID?
     private var userDataRef: UnsafeMutableRawPointer?
     
     private let fileManager = FileManager.default
@@ -21,7 +23,7 @@ class AudioManager: ObservableObject {
     // Output file URL for current recording
     private var outputFileURL: URL?
     
-    // Storage structure to be passed to the tap callback
+    // Storage structure to be passed to the device IO callback
     struct TapStorage {
         var audioFile: AVAudioFile?
         var format: AVAudioFormat?
@@ -74,7 +76,7 @@ class AudioManager: ObservableObject {
     }
     
     private func setupSystemAudioTap(format: AVAudioFormat) -> Bool {
-        // Create storage for the tap callback
+        // Create storage for the IO callback
         var tapStorage = TapStorage(audioFile: audioFile, format: format)
         
         // Convert to UnsafeMutableRawPointer to pass to the C API
@@ -88,7 +90,7 @@ class AudioManager: ObservableObject {
         var propertyAddress = AudioObjectPropertyAddress(
             mSelector: kAudioHardwarePropertyDefaultOutputDevice,
             mScope: kAudioObjectPropertyScopeGlobal,
-            mElement: kAudioObjectPropertyElementMaster
+            mElement: kAudioObjectPropertyElementMain
         )
         
         let status = AudioObjectGetPropertyData(
@@ -105,111 +107,168 @@ class AudioManager: ObservableObject {
             return false
         }
         
-        // Create the tap description
-        var tapDescription = CATapDescription()
-        tapDescription.device = deviceID
-        tapDescription.flags = 0  // No special flags needed
+        // Create an aggregate device with the output device
+        do {
+            if let aggDevice = try createAggregateDevice(withOutputDevice: deviceID) {
+                aggregateDevice = aggDevice
+                
+                // Set up an IO proc on the aggregate device
+                return setupDeviceIOProc()
+            }
+        } catch {
+            print("Failed to create aggregate device: \(error.localizedDescription)")
+        }
         
-        // Set the format from our AVAudioFormat
-        guard let streamDescription = format.streamDescription else {
-            print("Failed to get stream description from format")
+        return false
+    }
+    
+    private func createAggregateDevice(withOutputDevice deviceID: AudioDeviceID) throws -> AudioObjectID? {
+        // Create a unique device name and UID
+        let deviceName = "AudioTap_\(UUID().uuidString.prefix(8))"
+        let deviceUID = UUID().uuidString
+        
+        // Get device UID of the output device to use as clock source
+        var outputDeviceUID = try getDeviceUID(for: deviceID)
+        
+        // Create the aggregate device description
+        let description: [String: Any] = [
+            kAudioAggregateDeviceNameKey: deviceName,
+            kAudioAggregateDeviceUIDKey: deviceUID,
+            kAudioAggregateDeviceClockDeviceKey: outputDeviceUID,
+            kAudioAggregateDeviceIsPrivateKey: true
+        ]
+        
+        var newAggDeviceID: AudioObjectID = kAudioObjectUnknown
+        let status = AudioHardwareCreateAggregateDevice(description as CFDictionary, &newAggDeviceID)
+        
+        guard status == noErr else {
+            throw NSError(domain: NSOSStatusErrorDomain,
+                        code: Int(status),
+                        userInfo: [NSLocalizedDescriptionKey: "Failed to create aggregate device (\(status))"])
+        }
+        
+        return newAggDeviceID
+    }
+    
+    private func getDeviceUID(for deviceID: AudioDeviceID) throws -> String {
+        var propertyAddress = AudioObjectPropertyAddress(
+            mSelector: kAudioDevicePropertyDeviceUID,
+            mScope: kAudioObjectPropertyScopeGlobal,
+            mElement: kAudioObjectPropertyElementMain
+        )
+        
+        var deviceUIDRef: CFString?
+        var propertySize = UInt32(MemoryLayout<CFString?>.size)
+        
+        let status = AudioObjectGetPropertyData(
+            deviceID,
+            &propertyAddress,
+            0,
+            nil,
+            &propertySize,
+            &deviceUIDRef
+        )
+        
+        guard status == noErr, let uid = deviceUIDRef as String? else {
+            throw NSError(domain: NSOSStatusErrorDomain,
+                        code: Int(status),
+                        userInfo: [NSLocalizedDescriptionKey: "Failed to get device UID"])
+        }
+        
+        return uid
+    }
+    
+    private func setupDeviceIOProc() -> Bool {
+        guard let aggregateDevice = aggregateDevice else {
             return false
         }
-        tapDescription.format = streamDescription.pointee
         
-        // Set up the tap callback function
-        let tapCallback: CATapCallback = { (clientData, tap, frames, audioData) -> OSStatus in
-            guard let userData = clientData else { return noErr }
+        // Define the IO proc block - Fixed to match Swift's AudioDeviceIOBlock type signature
+        // Define the IO proc block - Fixed to match Swift's AudioDeviceIOBlock type signature
+        let ioProcBlock: AudioDeviceIOBlock = { inNow, inInputData, inInputTime, outOutputData, inOutputTime in
+            // Note the removed clientData parameter which was causing the error
+            guard let audioFile = self.audioFile else { return }
             
-            // Retrieve our storage structure
-            let tapStoragePointer = userData.assumingMemoryBound(to: TapStorage.self)
-            guard let audioFile = tapStoragePointer.pointee.audioFile else { return noErr }
+            let ioData = outOutputData.pointee
+            let bufferList = ioData.mBuffers
+            let frames = ioData.mNumberBuffers > 0 ? bufferList.mDataByteSize / 4 : 0 // Assuming 32-bit float
             
-            // Get format information from the audio data
-            let format = audioData.pointee.format
-            let bufferList = audioData.pointee.bufferList
+            guard frames > 0 else { return }
             
-            // Create an AVAudioPCMBuffer to write to the file
-            guard let pcmFormat = AVAudioFormat(
-                commonFormat: .pcmFormatFloat32,
-                sampleRate: Double(format.mSampleRate),
-                channels: AVAudioChannelCount(format.mChannelsPerFrame),
-                interleaved: false) else {
-                return noErr
-            }
+            guard let format = self.audioFile?.processingFormat else { return }
             
-            guard let buffer = AVAudioPCMBuffer(pcmFormat: pcmFormat, frameCapacity: AVAudioFrameCount(frames)) else {
-                return noErr
-            }
-            
+            // Create a buffer to write to the file
+            guard let buffer = AVAudioPCMBuffer(pcmFormat: format, frameCapacity: AVAudioFrameCount(frames)) else { return }
             buffer.frameLength = AVAudioFrameCount(frames)
             
-            // Copy audio data from the buffer list to our AVAudioPCMBuffer
-            let channelCount = Int(format.mChannelsPerFrame)
-            
-            // Get pointer to the first buffer in the buffer list
-            if channelCount > 0 && bufferList.pointee.mNumberBuffers > 0 {
-                let audioBuffer = bufferList.pointee.mBuffers
+            // Fix optional unwrapping error for mData
+            if let floatChannelData = buffer.floatChannelData, ioData.mNumberBuffers > 0 {
+                let channelCount = min(Int(format.channelCount), Int(ioData.mNumberBuffers))
                 
-                if let floatChannelData = buffer.floatChannelData {
-                    let dataPtr = audioBuffer.mData?.assumingMemoryBound(to: Float.self)
-                    
-                    if let dataPtr = dataPtr {
-                        // Copy the data - this example assumes non-interleaved format
-                        // For proper implementation, you'd need to handle both interleaved and non-interleaved formats
+                for channel in 0..<channelCount {
+                    // Fix to properly unwrap the optional mData pointer
+                    if let mData = ioData.mBuffers.mData {
+                        let audioBuffer = UnsafeRawPointer(mData)
+                            .assumingMemoryBound(to: Float.self)
+                        
                         for frame in 0..<Int(frames) {
-                            if frame < Int(buffer.frameCapacity) {
-                                floatChannelData[0][frame] = dataPtr[frame]
-                                
-                                // For stereo, copy the second channel data if available
-                                if channelCount > 1 && bufferList.pointee.mNumberBuffers > 1 {
-                                    let secondBuffer = bufferList.advanced(by: 1).pointee.mBuffers
-                                    let secondDataPtr = secondBuffer.mData?.assumingMemoryBound(to: Float.self)
-                                    if let secondDataPtr = secondDataPtr {
-                                        floatChannelData[1][frame] = secondDataPtr[frame]
-                                    }
-                                }
-                            }
+                            floatChannelData[channel][frame] = audioBuffer[frame * channelCount + channel]
                         }
                     }
                 }
-            }
-            
-            // Write the buffer to the audio file
-            do {
-                try audioFile.write(from: buffer)
-            } catch {
-                print("Error writing to file: \(error.localizedDescription)")
-            }
-            
-            return noErr
-        }
+                
+                // Write to file
+                do {
+                    try audioFile.write(from: buffer)
+                } catch {
+                    print("Error writing to file: \(error.localizedDescription)")
+                }
+            }        }
+        // Create the IO proc ID using the block
+        var procID: AudioDeviceIOProcID?
+        let status = AudioDeviceCreateIOProcIDWithBlock(&procID, aggregateDevice, nil, ioProcBlock)
         
-        // Create the audio tap
-        var tap: CATapRef?
-        let tapStatus = AudioHardwareCreateProcessTap(&tapDescription, tapCallback, userDataRef, &tap)
-        
-        if tapStatus != noErr {
-            print("Error creating audio tap: \(tapStatus)")
+        if status != noErr {
+            print("Error creating IO proc: \(status)")
             return false
         }
         
-        guard let createdTap = tap else {
-            print("Failed to create tap")
+        guard let deviceIOProcID = procID else {
+            print("Failed to create IO proc ID")
             return false
         }
         
-        processTap = createdTap
+        self.deviceIOProcID = deviceIOProcID
+        
+        // Start the IO proc
+        let startStatus = AudioDeviceStart(aggregateDevice, deviceIOProcID)
+        if startStatus != noErr {
+            print("Error starting audio device: \(startStatus)")
+            cleanupIOProc()
+            return false
+        }
+        
         return true
+    }
+    
+    private func cleanupIOProc() {
+        if let aggregateDevice = aggregateDevice, let deviceIOProcID = deviceIOProcID {
+            AudioDeviceStop(aggregateDevice, deviceIOProcID)
+            AudioDeviceDestroyIOProcID(aggregateDevice, deviceIOProcID)
+            self.deviceIOProcID = nil
+        }
     }
     
     func stopRecording() {
         guard isRecording else { return }
         
-        // Destroy the audio tap
-        if let tap = processTap {
-            AudioHardwareDestroyProcessTap(tap)
-            processTap = nil
+        // Stop and clean up the IO proc
+        cleanupIOProc()
+        
+        // Destroy the aggregate device if it exists
+        if let aggregateDevice = aggregateDevice {
+            AudioHardwareDestroyAggregateDevice(aggregateDevice)
+            self.aggregateDevice = nil
         }
         
         // Free the user data

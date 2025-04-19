@@ -1,23 +1,20 @@
-import SwiftUI
+import Foundation
 import AVFoundation
 import CoreAudio
-import AudioToolbox // For constants like kAudioObjectSystemObject
+import AudioToolbox
 
-// MARK: - Core Audio Helper Functions (Mirroring Apple's Example Style)
+// MARK: - Core Audio Helper Functions
 
-// Helper to create an AudioObjectPropertyAddress
 private func getPropertyAddress(selector: AudioObjectPropertySelector,
-                                scope: AudioObjectPropertyScope = kAudioObjectPropertyScopeGlobal,
-                                element: AudioObjectPropertyElement = kAudioObjectPropertyElementMain) -> AudioObjectPropertyAddress {
+                              scope: AudioObjectPropertyScope = kAudioObjectPropertyScopeGlobal,
+                              element: AudioObjectPropertyElement = kAudioObjectPropertyElementMain) -> AudioObjectPropertyAddress {
     return AudioObjectPropertyAddress(mSelector: selector, mScope: scope, mElement: element)
 }
 
-// Generic function to get property data
 private func getPropertyData<T>(objectID: AudioObjectID, address: AudioObjectPropertyAddress, defaultValue: T) throws -> T {
-    var mutableAddress = address // <-- Create mutable copy here
+    var mutableAddress = address
     var data = defaultValue
     var propertySize = UInt32(MemoryLayout<T>.size)
-    // Pass the mutable copy using '&'
     let status = AudioObjectGetPropertyData(objectID, &mutableAddress, 0, nil, &propertySize, &data)
     guard status == noErr else {
         print("Error getting property data for selector \(address.mSelector): \(status)")
@@ -26,14 +23,12 @@ private func getPropertyData<T>(objectID: AudioObjectID, address: AudioObjectPro
     return data
 }
 
-// Get UID string for a device ID
 private func getDeviceUID(for deviceID: AudioDeviceID) throws -> String {
     var address = getPropertyAddress(selector: kAudioDevicePropertyDeviceUID)
     let uid = try getPropertyData(objectID: deviceID, address: address, defaultValue: "" as CFString)
     return uid as String
 }
 
-// Get the default output device's UID
 private func getDefaultOutputDeviceUID() throws -> String {
     var address = getPropertyAddress(selector: kAudioHardwarePropertyDefaultOutputDevice)
     let deviceID = try getPropertyData(objectID: AudioObjectID(kAudioObjectSystemObject), address: address, defaultValue: kAudioObjectUnknown)
@@ -43,9 +38,9 @@ private func getDefaultOutputDeviceUID() throws -> String {
     return try getDeviceUID(for: deviceID)
 }
 
-// MARK: - AudioTapEngineManager
+// MARK: - AudioTapService
 
-class AudioTapEngineManager: ObservableObject {
+class AudioTapService: ObservableObject {
 
     // State
     @Published var isRecording = false
@@ -67,13 +62,13 @@ class AudioTapEngineManager: ObservableObject {
     /// Attempts to set up the audio tap, aggregate device, and audio engine.
     /// Should be called once before the first recording attempt.
     func setupAudioSystem() {
-        guard !isSetup else { return } // Don't setup multiple times without teardown
+        guard !isSetup else { return }
 
         do {
             print("Setting up audio system...")
             // 1. Create the Tap
             tapID = try createTap()
-            tapUID = try getTapUID(tapID: tapID) // Get UID right after creation
+            tapUID = try getTapUID(tapID: tapID)
             print(" Tap created with ID: \(tapID), UID: \(tapUID)")
 
             // 2. Create the Aggregate Device
@@ -95,7 +90,6 @@ class AudioTapEngineManager: ObservableObject {
         } catch {
             print("Audio system setup failed: \(error)")
             self.errorMessage = "Setup Failed: \(error.localizedDescription)"
-            // Clean up anything that might have been partially created
             tearDownAudioSystem()
         }
     }
@@ -115,9 +109,8 @@ class AudioTapEngineManager: ObservableObject {
             }
             self.engine = nil
         }
-        audioFile = nil // Ensures file handle is closed
+        audioFile = nil
 
-        // Destroy Core Audio objects (errors ignored during teardown)
         if aggregateDeviceID != kAudioObjectUnknown {
             let status = AudioHardwareDestroyAggregateDevice(aggregateDeviceID)
             print(" Destroyed aggregate device \(aggregateDeviceID) with status: \(status)")
@@ -154,7 +147,6 @@ class AudioTapEngineManager: ObservableObject {
             let outputURL = createOutputFileURL()
             print("Creating audio file at: \(outputURL.path)")
 
-            // Get format from the engine's input node (should be set up correctly now)
             let inputFormat = engine.inputNode.inputFormat(forBus: 0)
             guard inputFormat.streamDescription.pointee.mSampleRate > 0 else {
                 throw NSError(domain: "AudioTapError", code: 200, userInfo: [NSLocalizedDescriptionKey: "Invalid input format from audio engine."])
@@ -163,12 +155,10 @@ class AudioTapEngineManager: ObservableObject {
 
             audioFile = try AVAudioFile(forWriting: outputURL, settings: inputFormat.settings)
 
-            // Install the tap callback if not already installed
             if !engineTapInstalled {
                 installEngineTap(on: engine.inputNode, format: inputFormat)
             }
 
-            // Start the engine
             try engine.start()
             isRecording = true
             errorMessage = nil
@@ -177,7 +167,6 @@ class AudioTapEngineManager: ObservableObject {
         } catch {
             print("Error starting recording: \(error)")
             self.errorMessage = "Start Recording Failed: \(error.localizedDescription)"
-            // Clean up file if created, stop engine if started
             audioFile = nil
             if engine.isRunning { engine.stop() }
             isRecording = false
@@ -192,32 +181,20 @@ class AudioTapEngineManager: ObservableObject {
         print("Stopping recording...")
         engine.stop()
         isRecording = false
-        // File is implicitly closed when audioFile is deallocated or overwritten
-        audioFile = nil // Setting to nil closes the current file
+        audioFile = nil
         print("Recording stopped.")
-        // NOTE: Teardown is NOT called automatically here. Call tearDownAudioSystem() explicitly if needed.
     }
 
-    // MARK: - Private Core Audio Implementation Details
+    // MARK: - Private Core Audio Implementation
 
     private func createTap() throws -> AudioObjectID {
         let description = CATapDescription()
-        description.name = "SimplAudioTap_\(UUID().uuidString.prefix(8))"
+        description.name = "AudioTap_\(UUID().uuidString.prefix(8))"
         description.deviceUID = UUID().uuidString
 
-        // --- Configuration ---
         // Tap system-wide audio output by default
         description.processes = []
-        // To tap only this app: description.processes = [getpid()]
-        // To tap a specific other app (need its PID): description.processes = [otherAppPID]
-
-        // Mute behavior (optional): .mute, .unmute, .noPreference
-        // description.muteBehavior = .mute
-
-        // Tap scope (optional): .output, .input, .all
-        // description.tapScope = .output
-        // ---------------------
-
+        
         var newTapID: AudioObjectID = kAudioObjectUnknown
         let status = AudioHardwareCreateProcessTap(description, &newTapID)
 
@@ -230,12 +207,11 @@ class AudioTapEngineManager: ObservableObject {
     private func getTapUID(tapID: AudioObjectID) throws -> String {
         var address = getPropertyAddress(selector: kAudioTapPropertyUID)
         var uid: CFString = "" as CFString
-        var propertySize = UInt32(MemoryLayout<CFString?>.size) // Use size of Optional CFString
+        var propertySize = UInt32(MemoryLayout<CFString?>.size)
 
-        // Use withUnsafeMutablePointer for CFString bridging
-         let status = withUnsafeMutablePointer(to: &uid) { uidPtr in
+        let status = withUnsafeMutablePointer(to: &uid) { uidPtr in
              AudioObjectGetPropertyData(tapID, &address, 0, nil, &propertySize, uidPtr)
-         }
+        }
 
         guard status == noErr else {
             throw NSError(domain: NSOSStatusErrorDomain, code: Int(status), userInfo: [NSLocalizedDescriptionKey: "Failed to get tap UID (\(status))"])
@@ -243,14 +219,13 @@ class AudioTapEngineManager: ObservableObject {
         return uid as String
     }
 
-
     private func createAggregateDevice() throws -> AudioObjectID {
-        let deviceName = "SimplTapAggregate_\(UUID().uuidString.prefix(8))"
+        let deviceName = "AudioTapAggregate_\(UUID().uuidString.prefix(8))"
         let deviceUID = UUID().uuidString
         let description: [String: Any] = [
             kAudioAggregateDeviceNameKey: deviceName,
             kAudioAggregateDeviceUIDKey: deviceUID,
-            kAudioAggregateDeviceClockDeviceKey: try getDefaultOutputDeviceUID() // Use default output as clock source
+            kAudioAggregateDeviceClockDeviceKey: try getDefaultOutputDeviceUID()
         ]
 
         var newAggDeviceID: AudioObjectID = kAudioObjectUnknown
@@ -263,19 +238,15 @@ class AudioTapEngineManager: ObservableObject {
     }
 
     private func addTap(tapUID: String, to aggregateDeviceID: AudioObjectID) throws {
-        var propertyAddress = getPropertyAddress(selector: kAudioAggregateDevicePropertyTapList, scope: kAudioObjectPropertyScopeGlobal) // Often Global scope for TapList
+        var propertyAddress = getPropertyAddress(selector: kAudioAggregateDevicePropertyTapList, scope: kAudioObjectPropertyScopeGlobal)
 
-        // Prepare the list containing the tap's UID
         let tapList: [CFString] = [tapUID as CFString]
         let propertySize = UInt32(MemoryLayout<CFString?>.size * tapList.count)
 
-        // Use withUnsafeBufferPointer for safety when dealing with arrays of CF types
         let status = tapList.withUnsafeBufferPointer { bufferPointer -> OSStatus in
             guard let baseAddress = bufferPointer.baseAddress else {
-                // Should not happen for a non-empty array
                 return kAudioHardwareBadObjectError
             }
-            // Cast the base address to the expected type for the C function
             let rawPointer = UnsafeRawPointer(baseAddress).assumingMemoryBound(to: CFString.self)
             return AudioObjectSetPropertyData(aggregateDeviceID, &propertyAddress, 0, nil, propertySize, rawPointer)
         }
@@ -288,20 +259,18 @@ class AudioTapEngineManager: ObservableObject {
     private func setupAudioEngine(aggregateDeviceID: AudioObjectID) throws -> AVAudioEngine {
         let newEngine = AVAudioEngine()
         
-        // Get the audio unit from the input node
         guard let inputUnit = newEngine.inputNode.audioUnit else {
             throw NSError(domain: "AudioTapError",
                          code: -1,
                          userInfo: [NSLocalizedDescriptionKey: "Could not get audioUnit from inputNode"])
         }
         
-        // Set the input device on the audio unit
         var deviceID = aggregateDeviceID
         let propertySize = UInt32(MemoryLayout<AudioObjectID>.size)
         
         let status = AudioUnitSetProperty(
             inputUnit,
-            kAudioOutputUnitProperty_CurrentDevice,  // Note: this is correct despite being for "output"
+            kAudioOutputUnitProperty_CurrentDevice,
             kAudioUnitScope_Global,
             0,
             &deviceID,
@@ -315,32 +284,30 @@ class AudioTapEngineManager: ObservableObject {
                          userInfo: [NSLocalizedDescriptionKey: "Failed to set device ID on audio unit"])
         }
         
-        // Prepare engine (allocates resources)
         newEngine.prepare()
         
         return newEngine
     }
+    
     private func installEngineTap(on inputNode: AVAudioInputNode, format: AVAudioFormat) {
-         guard !engineTapInstalled else { return } // Avoid installing multiple times
+        guard !engineTapInstalled else { return }
 
-         inputNode.installTap(onBus: 0, bufferSize: 4096, format: format) { [weak self] (buffer, time) in
-             guard let self = self, let file = self.audioFile, self.isRecording else { return } // Check isRecording flag
+        inputNode.installTap(onBus: 0, bufferSize: 4096, format: format) { [weak self] (buffer, time) in
+            guard let self = self, let file = self.audioFile, self.isRecording else { return }
 
-             do {
-                 try file.write(from: buffer)
-             } catch {
-                 print("Error writing buffer to file: \(error)")
-                 // Consider making this error fatal for the recording session
-                 DispatchQueue.main.async {
-                    self.errorMessage = "Error writing audio data: \(error.localizedDescription)"
-                    self.stopRecording() // Stop recording on write error
-                 }
-             }
-         }
-         engineTapInstalled = true
-         print("Engine tap installed.")
-     }
-
+            do {
+                try file.write(from: buffer)
+            } catch {
+                print("Error writing buffer to file: \(error)")
+                DispatchQueue.main.async {
+                   self.errorMessage = "Error writing audio data: \(error.localizedDescription)"
+                   self.stopRecording()
+                }
+            }
+        }
+        engineTapInstalled = true
+        print("Engine tap installed.")
+    }
 
     // MARK: - Private Utility Functions
 
@@ -348,72 +315,13 @@ class AudioTapEngineManager: ObservableObject {
         let dateFormatter = DateFormatter()
         dateFormatter.dateFormat = "yyyyMMdd-HHmmss"
         let dateString = dateFormatter.string(from: Date())
-        // Use Documents directory
         let documentsURL = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
-        // Suggest using .caf for Core Audio Format, often more flexible than .wav
         let outputFileURL = documentsURL.appendingPathComponent("recording-\(dateString).caf")
         return outputFileURL
     }
-}
-
-
-// MARK: - Simplified SwiftUI View Example
-
-struct ContentView: View {
-    // Use @StateObject for the manager instance lifecycle tied to the view
-    @StateObject private var audioManager = AudioTapEngineManager()
-
-    var body: some View {
-        VStack(spacing: 15) {
-            Text("Simple Tap Recorder (macOS 14.2+)")
-                .font(.headline)
-
-            HStack {
-                Button {
-                    audioManager.startRecording()
-                } label: {
-                    Label("Start Recording", systemImage: "record.circle.fill")
-                        .frame(maxWidth: .infinity) // Make button wider
-                }
-                .tint(.green)
-                .disabled(audioManager.isRecording || !audioManager.isSetup) // Disable if recording or not setup
-
-                Button {
-                    audioManager.stopRecording()
-                } label: {
-                    Label("Stop Recording", systemImage: "stop.circle.fill")
-                        .frame(maxWidth: .infinity)
-                }
-                .tint(.red)
-                .disabled(!audioManager.isRecording) // Disable if not recording
-            }
-            .buttonStyle(.borderedProminent)
-            .controlSize(.large)
-
-
-            if let errorMsg = audioManager.errorMessage {
-                Text("Error: \(errorMsg)")
-                    .foregroundColor(.red)
-                    .padding(.top)
-            } else if audioManager.isRecording {
-                 Text("Status: Recording...")
-                     .foregroundColor(.green)
-                     .padding(.top)
-             } else {
-                  Text("Status: Ready")
-                     .foregroundColor(.gray)
-                     .padding(.top)
-             }
-        }
-        .padding()
-        .frame(minWidth: 350) // Give the view some space
-        .onAppear {
-            // Setup the audio system when the view appears
-            audioManager.setupAudioSystem()
-        }
-        .onDisappear {
-            // Clean up completely when the view goes away
-            audioManager.tearDownAudioSystem()
-        }
+    
+    deinit {
+        stopRecording()
+        tearDownAudioSystem()
     }
 }
