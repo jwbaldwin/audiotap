@@ -7,21 +7,21 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		CE0E73002B244B1E00E01234 /* AudioTap.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE0E72FF2B244B1E00E01234 /* AudioTap.swift */; };
 		CE0E73042B244B1F00E01234 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = CE0E73032B244B1F00E01234 /* Assets.xcassets */; };
-		CE0E730D2B244B5000E01234 /* AudioManager.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE0E730C2B244B5000E01234 /* AudioManager.swift */; };
-		CE0E730F2B244B7200E01234 /* AudioTapAdvanced.swift in Sources */ = {isa = PBXBuildFile; fileRef = CE0E730E2B244B7200E01234 /* AudioTapAdvanced.swift */; };
+		DAE347A72DB341E90006EF21 /* AudioTapService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAE347A52DB341E90006EF21 /* AudioTapService.swift */; };
+		DAE347A82DB341E90006EF21 /* AudioTapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAE347A62DB341E90006EF21 /* AudioTapView.swift */; };
+		DAE347AA2DB3428D0006EF21 /* AudioTap.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAE347A92DB3428D0006EF21 /* AudioTap.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		CE0E72FC2B244B1E00E01234 /* AudioTap.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AudioTap.app; sourceTree = BUILT_PRODUCTS_DIR; };
-		CE0E72FF2B244B1E00E01234 /* AudioTap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioTap.swift; sourceTree = "<group>"; };
 		CE0E73032B244B1F00E01234 /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		CE0E73082B244B1F00E01234 /* AudioTap.entitlements */ = {isa = PBXFileReference; lastKnownFileType = text.plist.entitlements; path = AudioTap.entitlements; sourceTree = "<group>"; };
-		CE0E730C2B244B5000E01234 /* AudioManager.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioManager.swift; sourceTree = "<group>"; };
-		CE0E730E2B244B7200E01234 /* AudioTapAdvanced.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioTapAdvanced.swift; sourceTree = "<group>"; };
 		CE0E73102B244BA000E01234 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		CE0E73112B244BA000E01234 /* README.md */ = {isa = PBXFileReference; lastKnownFileType = net.daringfireball.markdown; path = README.md; sourceTree = "<group>"; };
+		DAE347A52DB341E90006EF21 /* AudioTapService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioTapService.swift; sourceTree = "<group>"; };
+		DAE347A62DB341E90006EF21 /* AudioTapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioTapView.swift; sourceTree = "<group>"; };
+		DAE347A92DB3428D0006EF21 /* AudioTap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioTap.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -55,10 +55,10 @@
 		CE0E72FE2B244B1E00E01234 /* AudioTap */ = {
 			isa = PBXGroup;
 			children = (
+				DAE347A92DB3428D0006EF21 /* AudioTap.swift */,
+				DAE347A52DB341E90006EF21 /* AudioTapService.swift */,
+				DAE347A62DB341E90006EF21 /* AudioTapView.swift */,
 				CE0E73102B244BA000E01234 /* Info.plist */,
-				CE0E72FF2B244B1E00E01234 /* AudioTap.swift */,
-				CE0E730C2B244B5000E01234 /* AudioManager.swift */,
-				CE0E730E2B244B7200E01234 /* AudioTapAdvanced.swift */,
 				CE0E73032B244B1F00E01234 /* Assets.xcassets */,
 				CE0E73082B244B1F00E01234 /* AudioTap.entitlements */,
 			);
@@ -134,9 +134,9 @@
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				CE0E730F2B244B7200E01234 /* AudioTapAdvanced.swift in Sources */,
-				CE0E73002B244B1E00E01234 /* AudioTap.swift in Sources */,
-				CE0E730D2B244B5000E01234 /* AudioManager.swift in Sources */,
+				DAE347AA2DB3428D0006EF21 /* AudioTap.swift in Sources */,
+				DAE347A72DB341E90006EF21 /* AudioTapService.swift in Sources */,
+				DAE347A82DB341E90006EF21 /* AudioTapView.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

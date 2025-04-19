@@ -10,7 +10,14 @@ struct AudioTapView: View {
             
             Divider()
             
-            if audioService.isRecording {
+            if let error = audioService.errorMessage {
+                Text(error)
+                    .foregroundColor(.red)
+                    .font(.caption)
+                    .lineLimit(3)
+                    .multilineTextAlignment(.center)
+                    .padding(.horizontal)
+            } else if audioService.isRecording {
                 Button("Stop Recording") {
                     audioService.stopRecording()
                 }
@@ -20,6 +27,18 @@ struct AudioTapView: View {
                     audioService.startRecording()
                 }
                 .foregroundColor(.blue)
+            }
+            
+            Divider()
+            
+            if audioService.isSetup {
+                Text("System Ready")
+                    .foregroundColor(.green)
+                    .font(.caption)
+            } else {
+                Button("Setup Audio") {
+                    audioService.setupAudioSystem()
+                }
             }
             
             Divider()

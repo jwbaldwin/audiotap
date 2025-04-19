@@ -2,7 +2,12 @@ import SwiftUI
 
 @main
 struct AudioTapApp: App {
-    @StateObject private var audioService = AudioTapService()
+    // Use the shared singleton instance instead of creating a new one
+    private var audioService = AudioTapService.shared
+    
+    init() {
+            audioService.setupAudioSystem()
+    }
     
     var body: some Scene {
         MenuBarExtra("AudioTap", systemImage: audioService.isRecording ? "record.circle.fill" : "record.circle") {
@@ -21,16 +26,6 @@ struct AudioTapApp: App {
                 }
                 .disabled(!audioService.isSetup)
             }
-        }
-        .onChange(of: audioService.errorMessage) { _, newValue in
-            if let errorMessage = newValue {
-                #if DEBUG
-                print("Error: \(errorMessage)")
-                #endif
-            }
-        }
-        .onAppear {
-            audioService.setupAudioSystem()
         }
     }
 }
