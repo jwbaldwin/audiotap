@@ -14,6 +14,13 @@ struct AudioTapView: View {
             case .denied:
                 permissionDeniedView
             }
+            Section {
+                Button("Quit AudioTap") {
+                    NSApplication.shared.terminate(nil)
+                }
+                .buttonStyle(.bordered)
+                .frame(maxWidth: .infinity, alignment: .center)
+            }
         }
         .formStyle(.grouped)
     }

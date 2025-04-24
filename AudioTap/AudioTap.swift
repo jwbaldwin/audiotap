@@ -5,8 +5,9 @@ let kAppSubsystem = "com.jbaldwin.audiotap"
 @main
 struct AudioTapApp: App {
     var body: some Scene {
-        WindowGroup {
+        MenuBarExtra("Utility App", systemImage: "waveform") {
             AudioTapView()
         }
+        .menuBarExtraStyle(.window)
     }
 }
