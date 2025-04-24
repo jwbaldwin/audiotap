@@ -11,6 +11,13 @@
 		DAE347A72DB341E90006EF21 /* AudioTapService.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAE347A52DB341E90006EF21 /* AudioTapService.swift */; };
 		DAE347A82DB341E90006EF21 /* AudioTapView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAE347A62DB341E90006EF21 /* AudioTapView.swift */; };
 		DAE347AA2DB3428D0006EF21 /* AudioTap.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAE347A92DB3428D0006EF21 /* AudioTap.swift */; };
+		DAE347AC2DB5C7B60006EF21 /* AudioRecordingPermission.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAE347AB2DB5C7AF0006EF21 /* AudioRecordingPermission.swift */; };
+		DAE347AE2DB9BBE00006EF21 /* AudioProcessController.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAE347AD2DB9BBE00006EF21 /* AudioProcessController.swift */; };
+		DAE347B02DB9BCF10006EF21 /* ProcessSelectionView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAE347AF2DB9BCF10006EF21 /* ProcessSelectionView.swift */; };
+		DAE347B22DB9BD3C0006EF21 /* RecordingView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAE347B12DB9BD380006EF21 /* RecordingView.swift */; };
+		DAE347B42DB9BD530006EF21 /* FileProxyView.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAE347B32DB9BD4F0006EF21 /* FileProxyView.swift */; };
+		DAE347B62DB9BF100006EF21 /* RecordingIndicator.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAE347B52DB9BF0C0006EF21 /* RecordingIndicator.swift */; };
+		DAE347B92DB9C1020006EF21 /* CoreAudioUtils.swift in Sources */ = {isa = PBXBuildFile; fileRef = DAE347B82DB9C1020006EF21 /* CoreAudioUtils.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -22,6 +29,13 @@
 		DAE347A52DB341E90006EF21 /* AudioTapService.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioTapService.swift; sourceTree = "<group>"; };
 		DAE347A62DB341E90006EF21 /* AudioTapView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioTapView.swift; sourceTree = "<group>"; };
 		DAE347A92DB3428D0006EF21 /* AudioTap.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioTap.swift; sourceTree = "<group>"; };
+		DAE347AB2DB5C7AF0006EF21 /* AudioRecordingPermission.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioRecordingPermission.swift; sourceTree = "<group>"; };
+		DAE347AD2DB9BBE00006EF21 /* AudioProcessController.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AudioProcessController.swift; sourceTree = "<group>"; };
+		DAE347AF2DB9BCF10006EF21 /* ProcessSelectionView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ProcessSelectionView.swift; sourceTree = "<group>"; };
+		DAE347B12DB9BD380006EF21 /* RecordingView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingView.swift; sourceTree = "<group>"; };
+		DAE347B32DB9BD4F0006EF21 /* FileProxyView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FileProxyView.swift; sourceTree = "<group>"; };
+		DAE347B52DB9BF0C0006EF21 /* RecordingIndicator.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RecordingIndicator.swift; sourceTree = "<group>"; };
+		DAE347B82DB9C1020006EF21 /* CoreAudioUtils.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = CoreAudioUtils.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -55,8 +69,15 @@
 		CE0E72FE2B244B1E00E01234 /* AudioTap */ = {
 			isa = PBXGroup;
 			children = (
+				DAE347B82DB9C1020006EF21 /* CoreAudioUtils.swift */,
+				DAE347B52DB9BF0C0006EF21 /* RecordingIndicator.swift */,
+				DAE347B32DB9BD4F0006EF21 /* FileProxyView.swift */,
+				DAE347B12DB9BD380006EF21 /* RecordingView.swift */,
+				DAE347AF2DB9BCF10006EF21 /* ProcessSelectionView.swift */,
+				DAE347AD2DB9BBE00006EF21 /* AudioProcessController.swift */,
 				DAE347A92DB3428D0006EF21 /* AudioTap.swift */,
 				DAE347A52DB341E90006EF21 /* AudioTapService.swift */,
+				DAE347AB2DB5C7AF0006EF21 /* AudioRecordingPermission.swift */,
 				DAE347A62DB341E90006EF21 /* AudioTapView.swift */,
 				CE0E73102B244BA000E01234 /* Info.plist */,
 				CE0E73032B244B1F00E01234 /* Assets.xcassets */,
@@ -135,8 +156,15 @@
 			buildActionMask = 2147483647;
 			files = (
 				DAE347AA2DB3428D0006EF21 /* AudioTap.swift in Sources */,
+				DAE347AC2DB5C7B60006EF21 /* AudioRecordingPermission.swift in Sources */,
+				DAE347AE2DB9BBE00006EF21 /* AudioProcessController.swift in Sources */,
+				DAE347B92DB9C1020006EF21 /* CoreAudioUtils.swift in Sources */,
+				DAE347B42DB9BD530006EF21 /* FileProxyView.swift in Sources */,
+				DAE347B22DB9BD3C0006EF21 /* RecordingView.swift in Sources */,
+				DAE347B02DB9BCF10006EF21 /* ProcessSelectionView.swift in Sources */,
 				DAE347A72DB341E90006EF21 /* AudioTapService.swift in Sources */,
 				DAE347A82DB341E90006EF21 /* AudioTapView.swift in Sources */,
+				DAE347B62DB9BF100006EF21 /* RecordingIndicator.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
