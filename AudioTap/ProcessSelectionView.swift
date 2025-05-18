@@ -5,6 +5,8 @@ struct ProcessSelectionView: View {
     @State private var processController = AudioProcessController()
     @State private var tap: ProcessTap?
     @State private var recorder: ProcessTapRecorder?
+    @State private var coordinator: UploadCoordinator?
+    @State private var store = RecordingHistoryStore()
 
     @State private var selectedProcess: AudioProcess?
 
@@ -53,14 +55,20 @@ struct ProcessSelectionView: View {
                 Text(errorMessage)
                     .font(.headline)
                     .foregroundStyle(.red)
-            } else if let recorder {
-                RecordingView(recorder: recorder)
+            } else if let recorder, let coordinator {
+                RecordingView(recorder: recorder, coordinator: coordinator)
                     .onChange(of: recorder.isRecording) { wasRecording, isRecording in
                         /// Each recorder instance can only record a single file, so we create a new file/recorder when recording stops.
                         if wasRecording, !isRecording {
                             createRecorder()
                         }
                     }
+            }
+        }
+        
+        if let coordinator {
+            VStack {
+                ListRecordingsView(store: store, coordinator: coordinator)
             }
         }
     }
@@ -81,10 +89,14 @@ struct ProcessSelectionView: View {
 
         let newRecorder = ProcessTapRecorder(fileURL: audioFileURL, tap: tap)
         self.recorder = newRecorder
+        
+        self.coordinator = UploadCoordinator()
     }
 
     private func teardownTap() {
         tap = nil
+        recorder = nil
+        coordinator = nil
     }
 }
 

@@ -3,6 +3,7 @@ import SwiftUI
 @MainActor
 struct RecordingView: View {
     let recorder: ProcessTapRecorder
+    @ObservedObject var coordinator: UploadCoordinator
 
     @State private var lastRecordingURL: URL?
 
@@ -21,15 +22,36 @@ struct RecordingView: View {
                     .id("button")
 
                     if let lastRecordingURL {
-                        FileProxyView(url: lastRecordingURL)
-                            .transition(.scale.combined(with: .opacity))
+                        HStack {
+                            FileProxyView(url: lastRecordingURL)
+                            if coordinator.isUploading {
+                                ProgressView(value: coordinator.uploadProgress)
+                                    .progressViewStyle(.linear)
+                                    .frame(width: 80)
+                                
+                                Text("\(Int(coordinator.uploadProgress * 100))%")
+                                                                    .font(.caption)
+                            } else {
+                                Button("Upload") {
+                                    Task {
+                                        await coordinator.uploadRecording(fileURL: lastRecordingURL)
+                                    }
+                                }
+                                .buttonStyle(.borderless)
+                            }
+                        }
+                        .transition(.scale.combined(with: .opacity))
                     }
                 }
             }
             .animation(.smooth, value: recorder.isRecording)
             .animation(.smooth, value: lastRecordingURL)
             .onChange(of: recorder.isRecording) { _, newValue in
-                if !newValue { lastRecordingURL = recorder.fileURL }
+                if !newValue {
+                    lastRecordingURL = recorder.fileURL
+                    // Start the upload
+                    Task { await coordinator.uploadRecording(fileURL: recorder.fileURL) }
+                }
             }
         } header: {
             HStack {
