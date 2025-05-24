@@ -1,4 +1,5 @@
 import SwiftUI
+import CoreAudio
 
 @MainActor
 struct ProcessSelectionView: View {
@@ -15,6 +16,16 @@ struct ProcessSelectionView: View {
             Picker("Process", selection: $selectedProcess) {
                 Text("Select…")
                     .tag(Optional<AudioProcess>.none)
+                
+                HStack {
+                    Image(systemName: "speaker.wave.3")
+                        .resizable()
+                        .aspectRatio(contentMode: .fit)
+                        .frame(width: 16, height: 16)
+                    
+                    Text("System Audio (All Applications)")
+                }
+                .tag(Optional<AudioProcess>.some(createSystemAudioProcess()))
 
                 ForEach(processController.processGroups) { group in
                     Section {
@@ -66,11 +77,11 @@ struct ProcessSelectionView: View {
             }
         }
         
-        if let coordinator {
-            VStack {
-                ListRecordingsView(store: store, coordinator: coordinator)
-            }
-        }
+//        if let coordinator {
+//            VStack {
+//                ListRecordingsView(store: store, coordinator: coordinator)
+//            }
+//        }
     }
 
     private func setupRecording(for process: AudioProcess) {
@@ -91,6 +102,18 @@ struct ProcessSelectionView: View {
         self.recorder = newRecorder
         
         self.coordinator = UploadCoordinator()
+    }
+    
+    private func createSystemAudioProcess() -> AudioProcess {
+        return AudioProcess(
+            id: AudioTarget.systemWidePID,
+            kind: .system, // You may need to add this kind
+            name: "System Audio",
+            audioActive: true,
+            bundleID: nil,
+            bundleURL: nil,
+            objectID: AudioObjectID.unknown // Will be special-cased later
+        )
     }
 
     private func teardownTap() {

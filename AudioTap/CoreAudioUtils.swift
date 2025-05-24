@@ -22,6 +22,11 @@ extension AudioObjectID {
     static func readDefaultSystemOutputDevice() throws -> AudioDeviceID {
         try AudioDeviceID.system.readDefaultSystemOutputDevice()
     }
+    
+    /// Reads the value for `kAudioHardwarePropertyDefaultSystemOutputDevice`.
+    static func readDefaultSystemInputDevice() throws -> AudioDeviceID {
+        try AudioDeviceID.system.readDefaultSystemInputDevice()
+    }
 
     static func readProcessList() throws -> [AudioObjectID] {
         try AudioObjectID.system.readProcessList()
@@ -106,6 +111,27 @@ extension AudioObjectID {
 
         return try read(kAudioHardwarePropertyDefaultSystemOutputDevice, defaultValue: AudioDeviceID.unknown)
     }
+    
+    func readDefaultSystemInputDevice() throws -> AudioDeviceID {
+        try requireSystemObject()
+        
+        return try read(kAudioHardwarePropertyDefaultInputDevice, defaultValue: AudioDeviceID.unknown)
+    }
+    
+    func readBasicStreamDescription(scope: AudioObjectPropertyScope, element: AudioObjectPropertyElement = kAudioObjectPropertyElementMain) throws -> AudioStreamBasicDescription {
+        var streamDescription = AudioStreamBasicDescription()
+        var propertySize = UInt32(MemoryLayout<AudioStreamBasicDescription>.size)
+        var address = AudioObjectPropertyAddress(
+            mSelector: kAudioStreamPropertyVirtualFormat, // For devices, virtual format is often what we want
+            mScope: scope,
+            mElement: element
+        )
+        let status = AudioObjectGetPropertyData(self, &address, 0, nil, &propertySize, &streamDescription)
+        guard status == noErr else {
+            throw "Failed to read ASBD for \(self) (scope: \(scope.fourCharString), element: \(element)). Error: \(status)"
+        }
+        return streamDescription
+    }
 
     /// Reads the value for `kAudioDevicePropertyDeviceUID` for the device represented by this audio object ID.
     func readDeviceUID() throws -> String { try readString(kAudioDevicePropertyDeviceUID) }
@@ -185,7 +211,6 @@ extension AudioObjectID {
 }
 
 // MARK: - Debugging Helpers
-
 private extension UInt32 {
     var fourCharString: String {
         String(cString: [

@@ -3,10 +3,20 @@ import AudioToolbox
 import OSLog
 import Combine
 
+enum AudioTarget: Equatable {
+    case process(pid_t, name: String)
+    case system
+}
+
+extension AudioTarget {
+    static let systemWidePID: pid_t = 0
+}
+
 struct AudioProcess: Identifiable, Hashable, Sendable {
     enum Kind: String, Sendable {
         case process
         case app
+        case system
     }
     var id: pid_t
     var kind: Kind
@@ -24,10 +34,19 @@ struct AudioProcessGroup: Identifiable, Hashable, Sendable {
 }
 
 extension AudioProcess.Kind {
+    var groupTitle: String {
+        switch self {
+        case .process: "Processes"
+        case .app: "Apps"
+        case .system: "System"
+        }
+    }
+
     var defaultIcon: NSImage {
         switch self {
         case .process: NSWorkspace.shared.icon(for: .unixExecutable)
         case .app: NSWorkspace.shared.icon(for: .applicationBundle)
+        case .system: NSImage(systemSymbolName: "speaker.wave.3", accessibilityDescription: "System Audio") ?? NSWorkspace.shared.icon(for: .unixExecutable)
         }
     }
 }
@@ -181,15 +200,6 @@ extension AudioProcessGroup {
 extension AudioProcessGroup {
     init(for kind: AudioProcess.Kind) {
         self.init(id: kind.rawValue, title: kind.groupTitle, processes: [])
-    }
-}
-
-extension AudioProcess.Kind {
-    var groupTitle: String {
-        switch self {
-        case .process: "Processes"
-        case .app: "Apps"
-        }
     }
 }
 
